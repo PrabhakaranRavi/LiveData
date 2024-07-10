@@ -32,12 +32,12 @@ if st.button("Get Data"):
     data = get_data(ticker_symbol)
     st.write(data)
 
-    # Display the data as a table
-    st.write("OHLC Data:")
-    st.dataframe(data)
+    # # Display the data as a table
+    # st.write("OHLC Data:")
+    # st.dataframe(data)
 
-    # Display the data as a line chart
-    st.line_chart(data['Close'])
+    # # Display the data as a line chart
+    # st.line_chart(data['Close'])
 
     # Convert data to candlestick format
     candlestick_data = convert_data_to_candlestick_format(data)
