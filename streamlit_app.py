@@ -2,67 +2,91 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import time
-import streamlit.components.v1 as components
+from streamlit_lightweight_charts import renderLightweightCharts
 
-st.title("Live Stock Market Data with TradingView Charts")
+st.title("Live Stock Market Data")
 
 ticker_symbol = st.text_input("Enter stock ticker:", "MARUTI.NS")
 end_date = "2024-07-10"
 
+def get_data(ticker):
+    data = yf.download(ticker, start=end_date, interval="1m")
+    return data
+
+def convert_data_to_candlestick_format(data):
+    data = data.reset_index()
+    candlestick_data = []
+    for index, row in data.iterrows():
+        candlestick_data.append({
+            "open": row['Open'],
+            "high": row['High'],
+            "low": row['Low'],
+            "close": row['Close'],
+            "time": int(time.mktime(row['Datetime'].timetuple()))
+        })
+    return candlestick_data
+
 if st.button("Get Data"):
     st.write(f"Fetching data for {ticker_symbol}...")
 
-    def get_data(ticker):
-        data = yf.download(ticker, start=end_date, interval="1m")
-        return data
-
     data = get_data(ticker_symbol)
-    
+    st.write(data)
+
     # Display the data as a table
     st.write("OHLC Data:")
     st.dataframe(data)
 
-    # Prepare data for TradingView chart
-    chart_data = data.reset_index()
-    chart_data['Date'] = chart_data['Datetime'].astype(int) // 10**9  # Convert to UNIX timestamp
+    # Display the data as a line chart
+    st.line_chart(data['Close'])
 
-    # Convert the DataFrame to a list of dictionaries
-    chart_data_list = chart_data[['Date', 'Open', 'High', 'Low', 'Close']].to_dict(orient='records')
+    # Convert data to candlestick format
+    candlestick_data = convert_data_to_candlestick_format(data)
 
-    # TradingView Lightweight Charts
-    chart_code = f"""
-    <div id="chart" style="width: 100%; height: 400px;"></div>
-    <script type="text/javascript">
-      const chart = LightweightCharts.createChart(document.getElementById('chart'), {{
-        width: 600,
-        height: 300,
-        layout: {{
-          backgroundColor: '#ffffff',
-          textColor: '#000',
-        }},
-        grid: {{
-          vertLines: {{
-            color: 'rgba(197, 203, 206, 0.5)',
-          }},
-          horzLines: {{
-            color: 'rgba(197, 203, 206, 0.5)',
-          }},
-        }},
-        crosshair: {{
-          mode: LightweightCharts.CrosshairMode.Normal,
-        }},
-        rightPriceScale: {{
-          borderColor: 'rgba(197, 203, 206, 0.8)',
-        }},
-        timeScale: {{
-          borderColor: 'rgba(197, 203, 206, 0.8)',
-        }},
-      }});
-      const candleSeries = chart.addCandlestickSeries();
-      candleSeries.setData({chart_data_list});
-    </script>
-    """
+    # Chart options
+    chartOptions = {
+        "layout": {
+            "textColor": 'black',
+            "background": {
+                "type": 'solid',
+                "color": 'white'
+            }
+        }
+    }
 
-    components.html(chart_code, height=400)
+    seriesCandlestickChart = [{
+        "type": 'Candlestick',
+        "data": candlestick_data,
+        "options": {
+            "upColor": '#26a69a',
+            "downColor": '#ef5350',
+            "borderVisible": False,
+            "wickUpColor": '#26a69a',
+            "wickDownColor": '#ef5350'
+        }
+    }]
 
-# To run the app, use the command: streamlit run stock_app.py
+    st.subheader("Candlestick Chart")
+    renderLightweightCharts([
+        {
+            "chart": chartOptions,
+            "series": seriesCandlestickChart
+        }
+    ], 'candlestick')
+
+    # Refresh the data every minute
+    refresh_interval = 60  # in seconds
+    while True:
+        time.sleep(refresh_interval)
+        data = get_data(ticker_symbol)
+        st.write(data)
+        st.line_chart(data['Close'])
+        candlestick_data = convert_data_to_candlestick_format(data)
+        seriesCandlestickChart[0]["data"] = candlestick_data
+        renderLightweightCharts([
+            {
+                "chart": chartOptions,
+                "series": seriesCandlestickChart
+            }
+        ], 'candlestick')
+
+# To run the app, use the command: streamlit run streamlit_app.py
